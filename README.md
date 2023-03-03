@@ -4,6 +4,14 @@
 
 pyCFSolver is a fork of (FlareSolver) which is a proxy server to bypass Cloudflare and DDoS-GUARD protection.
 
+### Features
+- [x] All V3 FlareSolverr features
+- [x] Proxy Support
+
+### TODO
+- [ ] Session support (soon.)
+
+
 ## How it works
 
 pyCFSolver starts a proxy server, and it waits for user requests in an idle state using few resources.
