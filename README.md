@@ -29,38 +29,7 @@ soon as you are done using them.
 
 ### Docker
 
-It is recommended to install using a Docker container because the project depends on an external browser that is
-already included within the image.
-
-Docker images are available in:
-* GitHub Registry => https://github.com/orgs/FlareSolverr/packages/container/package/flaresolverr
-* DockerHub => https://hub.docker.com/r/flaresolverr/flaresolverr
-
-Supported architectures are:
-
-| Architecture | Tag          |
-|--------------|--------------|
-| x86          | linux/386    |
-| x86-64       | linux/amd64  |
-| ARM32        | linux/arm/v7 |
-| ARM64        | linux/arm64  |
-
-We provide a `docker-compose.yml` configuration file. Clone this repository and execute `docker-compose up -d` to start
-the container.
-
-If you prefer the `docker cli` execute the following command.
-```bash
-docker run -d \
-  --name=flaresolverr \
-  -p 8191:8191 \
-  -e LOG_LEVEL=info \
-  --restart unless-stopped \
-  ghcr.io/flaresolverr/flaresolverr:latest
-```
-
-If your host OS is Debian, make sure `libseccomp2` version is 2.5.x. You can check the version with `sudo apt-cache policy libseccomp2` 
-and update the package with `sudo apt install libseccomp2=2.5.1-1~bpo10+1` or `sudo apt install libseccomp2=2.5.1-1+deb11u1`.
-Remember to restart the Docker daemon and the container after the update.
+Not supported yet. See manual installation.
 
 ### Precompiled binaries
 
@@ -89,7 +58,8 @@ curl -L -X POST 'http://localhost:8191/v1' \
 --data-raw '{
   "cmd": "request.get",
   "url":"http://www.google.com/",
-  "maxTimeout": 60000
+  "maxTimeout": 60000, 
+  "proxy": {"url": "http://0.0.0.0:8888"}
 }'
 ```
 
@@ -128,7 +98,7 @@ Example response:
 
 #### + `sessions.destroy`
 
-This will properly shutdown a browser instance and remove all files associated with it to free up resources for a new
+This will properly shut down a browser instance and remove all files associated with it to free up resources for a new
 session. When you no longer need to use a session you should make sure to close it.
 
 | Parameter | Notes                                         |
@@ -240,9 +210,9 @@ Environment variables are set differently depending on the operating system. Som
 
 Sometimes CloudFlare not only gives mathematical computations and browser tests, sometimes they also require the user to
 solve a captcha.
-If this is the case, FlareSolverr will return the error `Captcha detected but no automatic solver is configured.`
+If this is the case, FlareSolver will return the error `Captcha detected but no automatic solver is configured.`
 
-FlareSolverr can be customized to solve the captchas automatically by setting the environment variable `CAPTCHA_SOLVER`
+FlareSolver can be customized to solve the captcha automatically by setting the environment variable `CAPTCHA_SOLVER`
 to the file name of one of the adapters inside the [/captcha](src/captcha) directory.
 
 ## Related projects
