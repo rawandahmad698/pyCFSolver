@@ -6,14 +6,14 @@ pyCFSolver is a fork of (FlareSolver) which is a proxy server to bypass Cloudfla
 
 ## How it works
 
-FlareSolverr starts a proxy server, and it waits for user requests in an idle state using few resources.
+pyCFSolver starts a proxy server, and it waits for user requests in an idle state using few resources.
 When some request arrives, it uses [Selenium](https://www.selenium.dev) with the
 [undetected-chromedriver](https://github.com/ultrafunkamsterdam/undetected-chromedriver)
 to create a web browser (Chrome). It opens the URL with user parameters and waits until the Cloudflare challenge
 is solved (or timeout). The HTML code and the cookies are sent back to the user, and those cookies can be used to
 bypass Cloudflare using other HTTP clients.
 
-**NOTE**: Web browsers consume a lot of memory. If you are running FlareSolverr on a machine with few RAM, do not make
+**NOTE**: Web browsers consume a lot of memory. If you are running pyCFSolver on a machine with few RAM, do not make
 many requests at once. With each request a new browser is launched.
 
 It is also possible to use a permanent session. However, if you use sessions, you should make sure to close them as
@@ -28,7 +28,7 @@ Not supported yet. See manual installation.
 ### Precompiled binaries
 
 Precompiled binaries are not currently available for v3. Please see https://github.com/FlareSolverr/FlareSolverr/issues/660 for updates,
-or below for instructions of how to build FlareSolverr from source code.
+or below for instructions of how to build pyCFSolver from source code.
 
 ### From source code
 
@@ -36,8 +36,8 @@ or below for instructions of how to build FlareSolverr from source code.
 * Install [Chrome](https://www.google.com/intl/en_us/chrome/) or [Chromium](https://www.chromium.org/getting-involved/download-chromium/) web browser.
 * (Only in Linux / macOS) Install [Xvfb](https://en.wikipedia.org/wiki/Xvfb) package.
 * Clone this repository and open a shell in that path.
-* Run `pip install -r requirements.txt` command to install FlareSolverr dependencies.
-* Run `python src/flaresolverr.py` command to start FlareSolverr.
+* Run `pip install -r requirements.txt` command to install pyCFSolver dependencies.
+* Run `python src/flaresolverr.py` command to start pyCFSolver.
 
 ### Systemd service
 
@@ -110,7 +110,7 @@ session. When you no longer need to use a session you should make sure to close 
 | returnOnlyCookies | Optional, default false. Only returns the cookies. Response data, headers and other parts of the response are removed.                                                                                                                                                                                                                       |
 | proxy             | Optional, default disabled. Eg: `"proxy": {"url": "http://127.0.0.1:8888"}`. You must include the proxy schema in the URL: `http://`, `socks4://` or `socks5://`. Authorization (username/password) is not supported. (When the `session` parameter is set, the proxy is ignored; a session specific proxy can be set in `sessions.create`.) |
 
-:warning: If you want to use Cloudflare clearance cookie in your scripts, make sure you use the FlareSolverr User-Agent too. If they don't match you will see the challenge.
+:warning: If you want to use Cloudflare clearance cookie in your scripts, make sure you use the pyCFSolver User-Agent too. If they don't match you will see the challenge.
 
 Example response from running the `curl` above:
 
@@ -189,14 +189,14 @@ This is the same as `request.get` but it takes one more param:
 | TZ              | UTC                    | Timezone used in the logs and the web browser. Example: `TZ=Europe/London`.                                                                                   |
 | HEADLESS        | true                   | Only for debugging. To run the web browser in headless mode or visible.                                                                                       |
 | BROWSER_TIMEOUT | 40000                  | If you are experiencing errors/timeouts because your system is slow, you can try to increase this value. Remember to increase the `maxTimeout` parameter too. |
-| TEST_URL        | https://www.google.com | FlareSolverr makes a request on start to make sure the web browser is working. You can change that URL if it is blocked in your country.                      |
+| TEST_URL        | https://www.google.com | pyCFSolver makes a request on start to make sure the web browser is working. You can change that URL if it is blocked in your country.                      |
 | PORT            | 8191                   | Listening port. You don't need to change this if you are running on Docker.                                                                                   |
 | HOST            | 0.0.0.0                | Listening interface. You don't need to change this if you are running on Docker.                                                                              |
 
 Environment variables are set differently depending on the operating system. Some examples:
 * Docker: Take a look at the Docker section in this document. Environment variables can be set in the `docker-compose.yml` file or in the Docker CLI command.
-* Linux: Run `export LOG_LEVEL=debug` and then start FlareSolverr in the same shell.
-* Windows: Open `cmd.exe`, run `set LOG_LEVEL=debug` and then start FlareSolverr in the same shell.
+* Linux: Run `export LOG_LEVEL=debug` and then start pyCFSolver in the same shell.
+* Windows: Open `cmd.exe`, run `set LOG_LEVEL=debug` and then start pyCFSolver in the same shell.
 
 ## Captcha Solvers
 
@@ -204,9 +204,9 @@ Environment variables are set differently depending on the operating system. Som
 
 Sometimes CloudFlare not only gives mathematical computations and browser tests, sometimes they also require the user to
 solve a captcha.
-If this is the case, FlareSolver will return the error `Captcha detected but no automatic solver is configured.`
+If this is the case, pyCFSolver will return the error `Captcha detected but no automatic solver is configured.`
 
-FlareSolver can be customized to solve the captcha automatically by setting the environment variable `CAPTCHA_SOLVER`
+pyCFSolver can be customized to solve the captcha automatically by setting the environment variable `CAPTCHA_SOLVER`
 to the file name of one of the adapters inside the [/captcha](src/captcha) directory.
 
 ## Related projects
