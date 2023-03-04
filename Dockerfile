@@ -49,7 +49,6 @@ RUN pip install -r requirements.txt \
 USER flaresolverr
 
 COPY src .
-COPY package.json ../
 
 EXPOSE 8191
 
