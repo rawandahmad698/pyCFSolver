@@ -1,4 +1,5 @@
 import logging
+import os
 import sys
 import time
 from urllib.parse import unquote
@@ -171,11 +172,15 @@ def _resolve_challenge(req: V1RequestBase, method: str) -> ChallengeResolutionT:
     timeout = req.maxTimeout / 1000
     driver = None
     try:
-        driver = utils.get_webdriver()
+        driver = utils.get_webdriver(req=req)
         return func_timeout(timeout, _evil_logic, (req, driver, method))
     except FunctionTimedOut:
         raise Exception(f'Error solving the challenge. Timeout after {timeout} seconds.')
     except Exception as e:
+        # Get line number
+        exc_type, exc_obj, exc_tb = sys.exc_info()
+        fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+        logging.error(f"{exc_type}, {fname}, {exc_tb.tb_lineno}")
         raise Exception('Error solving the challenge. ' + str(e))
     finally:
         if driver is not None:

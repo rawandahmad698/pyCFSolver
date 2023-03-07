@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+import random
 import re
 import shutil
 
@@ -10,7 +11,7 @@ import undetected_chromedriver as uc
 from dtos import V1RequestBase, V1ResponseBase, ChallengeResolutionT, ChallengeResolutionResultT, IndexResponse, \
     HealthResponse, STATUS_OK, STATUS_ERROR
 
-FLARESOLVERR_VERSION = None
+FLARESOLVERR_VERSION = 0.1
 CHROME_MAJOR_VERSION = None
 USER_AGENT = None
 XVFB_DISPLAY = None
@@ -43,32 +44,41 @@ def get_webdriver(req: V1RequestBase = None) -> WebDriver:
     # undetected_chromedriver
     options = uc.ChromeOptions()
     options.add_argument('--no-sandbox')
-    options.add_argument('--window-size=1920,1080')
+
+    random_w = random.randint(800, 1200)
+    random_h = random.randint(600, 800)
+    options.add_argument(f'--window-size={random_w},{random_h}')
+
     # todo: this param shows a warning in chrome head-full
     options.add_argument('--disable-setuid-sandbox')
     options.add_argument('--disable-dev-shm-usage')
     # this option removes the zygote sandbox (it seems that the resolution is a bit faster)
     options.add_argument('--no-zygote')
 
+
     # Proxy Support
     if req is not None and req.proxy is not None:
         proxy = req.proxy['url']
         options.add_argument('--proxy-server=%s' % proxy)
+        print("Added proxy: %s" % proxy)
 
     # note: headless mode is detected (options.headless = True)
     # we launch the browser in head-full mode with the window hidden
     windows_headless = False
     if get_config_headless():
-        if os.name == 'nt':
+        if req is not None and req.headless is True or os.name == 'nt':
             windows_headless = True
+
+            # Add start minimized
+            options.add_argument('--start-minimized')
         else:
             start_xvfb_display()
 
-    # if we are inside the Docker container, we avoid downloading the driver
+    # If we are inside the Docker container, we avoid downloading the driver
     driver_exe_path = None
     version_main = None
     if os.path.exists("/app/chromedriver"):
-        # running inside Docker
+        # Running inside Docker
         driver_exe_path = "/app/chromedriver"
     else:
         version_main = get_chrome_major_version()
@@ -79,6 +89,11 @@ def get_webdriver(req: V1RequestBase = None) -> WebDriver:
     # if we don't set driver_executable_path it downloads, patches, and deletes the driver each time
     driver = uc.Chrome(options=options, driver_executable_path=driver_exe_path, version_main=version_main,
                        windows_headless=windows_headless)
+
+    # Temporary fix for headless mode
+    if windows_headless:
+        # Hide the window
+        driver.minimize_window()
 
     # save the patched driver to avoid re-downloads
     if driver_exe_path is None:
