@@ -154,6 +154,8 @@ def _cmd_request_get(req: V1RequestBase) -> V1ResponseBase:
     if req.download is not None:
         logging.warning("Request parameter 'download' was removed in FlareSolverr v2.")
 
+    if req.headless:
+        logging.info("Headless mode is enabled.")
     challenge_res = _resolve_challenge(req, 'GET')
     res = V1ResponseBase({})
     res.status = challenge_res.status
@@ -239,7 +241,7 @@ def _resolve_challenge(req: V1RequestBase, method: str) -> ChallengeResolutionT:
 
             driver = session.driver
         else:
-            driver = utils.get_webdriver()
+            driver = utils.get_webdriver(req=req)
             logging.debug('New instance of webdriver has been created to perform the request')
         return func_timeout(timeout, _evil_logic, (req, driver, method))
     except FunctionTimedOut:
