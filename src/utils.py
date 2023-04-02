@@ -55,14 +55,14 @@ def get_webdriver(req: V1RequestBase = None) -> WebDriver:
         # this option removes the zygote sandbox (it seems that the resolution is a bit faster)
         options.add_argument('--no-zygote')
 
-        # Make headless
-        options.add_argument("--headless")
-
         # Proxy Support
         if req is not None and req.proxy is not None:
             proxy = req.proxy['url']
             options.add_argument('--proxy-server=%s' % proxy)
             # print("Added proxy: %s" % proxy)
+
+        if req.headless:
+            options.add_argument("--headless")
 
         # note: headless mode is detected (options.headless = True)
         # we launch the browser in head-full mode with the window hidden
@@ -71,8 +71,9 @@ def get_webdriver(req: V1RequestBase = None) -> WebDriver:
             if req is not None and req.headless is True or os.name == 'nt':
                 windows_headless = True
 
+                # Make headless
                 # Add start minimized
-                options.add_argument('--start-minimized')
+                # options.add_argument('--start-minimized')
             else:
                 start_xvfb_display()
 
