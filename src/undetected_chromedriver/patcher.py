@@ -56,7 +56,7 @@ class Patcher(object):
             force: False
                     terminate processes which are holding lock
             version_main: 0 = auto
-                specify main chrome version (rounded, ex: 82)
+                specify main Chrome version (rounded, ex: 82)
         """
         self.force = force
         self._custom_exe_path = False

@@ -6,10 +6,9 @@ import re
 import shutil
 
 from selenium.webdriver.chrome.webdriver import WebDriver
-import undetected_chromedriver as uc
 
-from dtos import V1RequestBase, V1ResponseBase, ChallengeResolutionT, ChallengeResolutionResultT, IndexResponse, \
-    HealthResponse, STATUS_OK, STATUS_ERROR
+import undetected_chromedriver as uc
+from dtos import V1RequestBase
 
 FLARESOLVERR_VERSION = 0.1
 CHROME_MAJOR_VERSION = None
@@ -41,74 +40,82 @@ def get_webdriver(req: V1RequestBase = None) -> WebDriver:
     global PATCHED_DRIVER_PATH
     logging.debug('Launching web browser...')
 
-    # undetected_chromedriver
-    options = uc.ChromeOptions()
-    options.add_argument('--no-sandbox')
+    try:
+        # undetected_chromedriver
+        options = uc.ChromeOptions()
+        options.add_argument('--no-sandbox')
 
-    random_w = random.randint(800, 1200)
-    random_h = random.randint(600, 800)
-    options.add_argument(f'--window-size={random_w},{random_h}')
+        random_w = random.randint(800, 1200)
+        random_h = random.randint(600, 800)
+        options.add_argument(f'--window-size={random_w},{random_h}')
 
-    # todo: this param shows a warning in chrome head-full
-    options.add_argument('--disable-setuid-sandbox')
-    options.add_argument('--disable-dev-shm-usage')
-    # this option removes the zygote sandbox (it seems that the resolution is a bit faster)
-    options.add_argument('--no-zygote')
+        # todo: this param shows a warning in chrome head-full
+        options.add_argument('--disable-setuid-sandbox')
+        options.add_argument('--disable-dev-shm-usage')
+        # this option removes the zygote sandbox (it seems that the resolution is a bit faster)
+        options.add_argument('--no-zygote')
 
+        # Make headless
+        options.add_argument("--headless")
 
-    # Proxy Support
-    if req is not None and req.proxy is not None:
-        proxy = req.proxy['url']
-        options.add_argument('--proxy-server=%s' % proxy)
-        print("Added proxy: %s" % proxy)
+        # Proxy Support
+        if req is not None and req.proxy is not None:
+            proxy = req.proxy['url']
+            options.add_argument('--proxy-server=%s' % proxy)
+            # print("Added proxy: %s" % proxy)
 
-    # note: headless mode is detected (options.headless = True)
-    # we launch the browser in head-full mode with the window hidden
-    windows_headless = False
-    if get_config_headless():
-        if req is not None and req.headless is True or os.name == 'nt':
-            windows_headless = True
+        # note: headless mode is detected (options.headless = True)
+        # we launch the browser in head-full mode with the window hidden
+        windows_headless = False
+        if get_config_headless():
+            if req is not None and req.headless is True or os.name == 'nt':
+                windows_headless = True
 
-            # Add start minimized
-            options.add_argument('--start-minimized')
+                # Add start minimized
+                options.add_argument('--start-minimized')
+            else:
+                start_xvfb_display()
+
+        # If we are inside the Docker container, we avoid downloading the driver
+        driver_exe_path = None
+        version_main = None
+        if os.path.exists("/app/chromedriver"):
+            # Running inside Docker
+            driver_exe_path = "/app/chromedriver"
         else:
-            start_xvfb_display()
+            version_main = get_chrome_major_version()
+            if PATCHED_DRIVER_PATH is not None:
+                driver_exe_path = PATCHED_DRIVER_PATH
 
-    # If we are inside the Docker container, we avoid downloading the driver
-    driver_exe_path = None
-    version_main = None
-    if os.path.exists("/app/chromedriver"):
-        # Running inside Docker
-        driver_exe_path = "/app/chromedriver"
-    else:
-        version_main = get_chrome_major_version()
-        if PATCHED_DRIVER_PATH is not None:
-            driver_exe_path = PATCHED_DRIVER_PATH
+        # downloads and patches the chromedriver
+        # if we don't set driver_executable_path it downloads, patches, and deletes the driver each time
+        driver = uc.Chrome(options=options, driver_executable_path=driver_exe_path, version_main=version_main,
+                           windows_headless=windows_headless)
 
-    # downloads and patches the chromedriver
-    # if we don't set driver_executable_path it downloads, patches, and deletes the driver each time
-    driver = uc.Chrome(options=options, driver_executable_path=driver_exe_path, version_main=version_main,
-                       windows_headless=windows_headless)
+        # Temporary fix for headless mode
+        if windows_headless:
+            # Hide the window
+            driver.minimize_window()
 
-    # Temporary fix for headless mode
-    if windows_headless:
-        # Hide the window
-        driver.minimize_window()
+        # save the patched driver to avoid re-downloads
+        if driver_exe_path is None:
+            PATCHED_DRIVER_PATH = os.path.join(driver.patcher.data_path, driver.patcher.exe_name)
+            shutil.copy(driver.patcher.executable_path, PATCHED_DRIVER_PATH)
 
-    # save the patched driver to avoid re-downloads
-    if driver_exe_path is None:
-        PATCHED_DRIVER_PATH = os.path.join(driver.patcher.data_path, driver.patcher.exe_name)
-        shutil.copy(driver.patcher.executable_path, PATCHED_DRIVER_PATH)
+        # selenium vanilla
+        # options = webdriver.ChromeOptions()
+        # options.add_argument('--no-sandbox')
+        # options.add_argument('--window-size=1920,1080')
+        # options.add_argument('--disable-setuid-sandbox')
+        # options.add_argument('--disable-dev-shm-usage')
+        # driver = webdriver.Chrome(options=options)
 
-    # selenium vanilla
-    # options = webdriver.ChromeOptions()
-    # options.add_argument('--no-sandbox')
-    # options.add_argument('--window-size=1920,1080')
-    # options.add_argument('--disable-setuid-sandbox')
-    # options.add_argument('--disable-dev-shm-usage')
-    # driver = webdriver.Chrome(options=options)
-
-    return driver
+        return driver
+    except Exception as e:
+        logging.exception(e)
+        tb = e.__traceback__
+        lineno = tb.tb_lineno
+        raise Exception(f'Error launching web browser: {e} (line {lineno})')
 
 
 def get_chrome_exe_path() -> str:

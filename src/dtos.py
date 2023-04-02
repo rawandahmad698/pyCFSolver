@@ -32,6 +32,7 @@ class V1RequestBase(object):
     cookies: list = None
     maxTimeout: int = None
     proxy: dict = None
+    session_ttl_minutes: int = None
     headless: bool = None
     session: str = None
     headers: list = None  # deprecated v2.0.0, not used
