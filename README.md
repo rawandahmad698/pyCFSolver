@@ -7,9 +7,10 @@ pyCFSolver is a fork of (FlareSolver) which is a proxy server to bypass Cloudfla
 ### Features
 - [x] All V3 FlareSolverr features
 - [x] Proxy Support
+- [x] Session support (Ty @furdarius & @Xefir)
 
 ### TODO
-- [ ] Session support (soon.)
+- [ ] Add Docker support
 
 
 ## How it works
