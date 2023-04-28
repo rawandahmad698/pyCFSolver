@@ -252,10 +252,11 @@ def _resolve_challenge(req: V1RequestBase, method: str) -> ChallengeResolutionT:
         line_number = tb.split('File')[1].split(',')[1].split(')')[0]
         print(f'Error on line {line_number} in file {__file__}')
 
-        raise Exception('Error solving the challenge. ' + str(e))
+        # raise Exception('Error solving the challenge. ' + str(e))
+        print('Error solving the challenge. ' + str(e))
 
     finally:
-        if not req.session and driver is not None:
+        if not req.session or driver is not None:
             driver.quit()
             logging.debug('A used instance of webdriver has been destroyed')
 

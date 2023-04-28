@@ -1,5 +1,5 @@
 project:PyCFSolver
-version:1.0.1
+version:1.0.2
 overwrite:src/flaresolverr.py
 overwrite:src/flaresolverr_service.py
 overwrite:src/sessions.py
