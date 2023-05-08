@@ -1,4 +1,3 @@
-<hr>
 <h3>
         <h3>CapSolver.com</h3>
         <br>
