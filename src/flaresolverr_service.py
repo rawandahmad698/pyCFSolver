@@ -256,8 +256,11 @@ def _resolve_challenge(req: V1RequestBase, method: str) -> ChallengeResolutionT:
         print('Error solving the challenge. ' + str(e))
 
     finally:
-        if not req.session or driver is not None:
-            driver.quit()
+        if not req.session:
+            if driver:
+                driver.quit()
+            else:
+                logging.debug('No instance of webdriver has been created to perform the request')
             logging.debug('A used instance of webdriver has been destroyed')
 
 

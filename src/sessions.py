@@ -65,7 +65,8 @@ class SessionsStorage:
             return False
 
         session = self.sessions.pop(session_id)
-        session.driver.quit()
+        if self.session.driver:
+            session.driver.quit()
         return True
 
     def get(self, session_id: str, ttl: Optional[timedelta] = None) -> Tuple[Session, bool]:
