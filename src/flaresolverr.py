@@ -71,6 +71,7 @@ if __name__ == "__main__":
     logger_format = '%(asctime)s %(levelname)-8s %(message)s'
     if log_level == 'DEBUG':
         logger_format = '%(asctime)s %(levelname)-8s ReqId %(thread)s %(message)s'
+
     logging.basicConfig(
         format=logger_format,
         level=log_level,

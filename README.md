@@ -67,7 +67,7 @@ We provide an example Systemd unit file `flaresolverr.service` as reference. You
 
 Example request:
 ```bash
-curl -L -X POST 'http://localhost:8191/v1' \
+curl -L -X POST 'http://localhost:8192/v1' \
 -H 'Content-Type: application/json' \
 --data-raw '{
   "cmd": "request.get",
@@ -76,6 +76,40 @@ curl -L -X POST 'http://localhost:8191/v1' \
   "proxy": {"url": "http://0.0.0.0:8888"}
 }'
 ```
+
+Create a session:
+```bash
+curl -L -X POST 'http://localhost:8192/v1' \
+-H 'Content-Type: application/json' \
+--data-raw '{
+  "cmd": "sessions.create",
+  "session": "session_id_1",
+}'
+```
+Use a session:
+```bash
+curl -L -X POST 'http://localhost:8192/v1' \
+-H 'Content-Type: application/json' \
+--data-raw '{
+  "cmd": "request.get",
+  "url":"http://www.google.com/",
+  "maxTimeout": 60000, 
+  "session": "session_id_1",
+  "session_ttl_minutes": 10, # Time to live in minutes
+  "proxy": {"url": "http://0.0.0.0:8888"}
+}'
+```
+
+Destroy a session:
+```bash
+curl -L -X POST 'http://localhost:8192/v1' \
+-H 'Content-Type: application/json' \
+--data-raw '{
+  "cmd": "sessions.destroy",
+  "session": "session_id_1",
+}'
+```
+
 
 ### Commands
 

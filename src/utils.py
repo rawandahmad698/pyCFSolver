@@ -136,6 +136,8 @@ def get_chrome_major_version() -> str:
             output = stream.read()
             # Example: '104.0.5112.79'
             complete_version = extract_version_registry(output)
+
+        # noinspection PyBroadException
         except Exception:
             # Example: '104.0.5112.79'
             complete_version = extract_version_folder()
@@ -187,7 +189,10 @@ def get_user_agent(driver=None) -> str:
 
     try:
         if driver is None:
-            driver = get_webdriver()
+            req = V1RequestBase(_dict={})
+            req.headless = True
+            driver = get_webdriver(req=req)
+
         USER_AGENT = driver.execute_script("return navigator.userAgent")
         return USER_AGENT
     except Exception as e:
@@ -196,17 +201,6 @@ def get_user_agent(driver=None) -> str:
         if driver is not None:
             driver.quit()
 
-
-""" 
-curl -L -X POST 'http://localhost:8191/v1' \
--H 'Content-Type: application/json' \
---data-raw '{
-  "cmd": "request.get",
-  "url":"https://hatclub.com/products.json",
-  "proxy": {"url": "http://18.205.180.216:3128"},
-  "maxTimeout": 60000
-}'
-"""
 
 def start_xvfb_display():
     global XVFB_DISPLAY

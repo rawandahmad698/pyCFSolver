@@ -183,8 +183,7 @@ def _cmd_request_post(req: V1RequestBase) -> V1ResponseBase:
 
 def _cmd_sessions_create(req: V1RequestBase) -> V1ResponseBase:
     logging.debug("Creating new session...")
-
-    session, fresh = SESSIONS_STORAGE.create(session_id=req.session)
+    session, fresh = SESSIONS_STORAGE.create(req=req, session_id=req.session)
     session_id = session.session_id
 
     if not fresh:
@@ -212,11 +211,21 @@ def _cmd_sessions_list(req: V1RequestBase) -> V1ResponseBase:
 
 
 def _cmd_sessions_destroy(req: V1RequestBase) -> V1ResponseBase:
-    session_id = req.session
+    try:
+        session_id = req.session
+    except Exception as e:
+        print("Error: " + str(e))
+        return V1ResponseBase({
+            "status": STATUS_ERROR,
+            "message": str(e)
+        })
+
     existed = SESSIONS_STORAGE.destroy(session_id)
 
     if not existed:
         raise Exception("The session doesn't exist.")
+
+    logging.info(f"Session destroyed (session_id={session_id})")
 
     return V1ResponseBase({
         "status": STATUS_OK,
@@ -231,13 +240,17 @@ def _resolve_challenge(req: V1RequestBase, method: str) -> ChallengeResolutionT:
         if req.session:
             session_id = req.session
             ttl = timedelta(minutes=req.session_ttl_minutes) if req.session_ttl_minutes else None
-            session, fresh = SESSIONS_STORAGE.get(session_id, ttl)
+            logging.debug(f"Trying to get session (session_id={session_id}, ttl={str(ttl)})")
+            session, fresh = SESSIONS_STORAGE.get(session_id, ttl, req=req)
 
             if fresh:
                 logging.debug(f"new session created to perform the request (session_id={session_id})")
+                print(f"new session created to perform the request (session_id={session_id})")
             else:
                 logging.debug(f"existing session is used to perform the request (session_id={session_id}, "
                               f"lifetime={str(session.lifetime())}, ttl={str(ttl)})")
+                print(f"existing session is used to perform the request (session_id={session_id}, "
+                      f"lifetime={str(session.lifetime())}, ttl={str(ttl)})")
 
             driver = session.driver
         else:
