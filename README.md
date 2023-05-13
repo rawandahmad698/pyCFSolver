@@ -84,6 +84,7 @@ curl -L -X POST 'http://localhost:8192/v1' \
 --data-raw '{
   "cmd": "sessions.create",
   "session": "session_id_1",
+  "headless": true,
 }'
 ```
 Use a session:
