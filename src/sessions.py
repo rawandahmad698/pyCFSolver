@@ -24,8 +24,11 @@ class SessionsStorage:
     """SessionsStorage creates, stores and process all the sessions"""
 
     def __init__(self):
+        # Self.sessions is a set of dictionaries with the following structure:
         self.sessions = {}
         self.drivers = {}
+        self.real_sessions = []
+        self.is_being_created = []
 
     def create(self, req: V1RequestBase = None, session_id: Optional[str] = None, force_new: Optional[bool] = False) -> Tuple[Session, bool]:
         """create creates new instance of WebDriver if necessary,
@@ -46,6 +49,18 @@ class SessionsStorage:
         if self.exists(session_id):
             return self.sessions[session_id], False
 
+        # Try to add it to the real sessions
+        if session_id not in self.real_sessions:
+            self.real_sessions.append(session_id)
+            self.is_being_created.append(session_id)
+        else:
+            if session_id in self.is_being_created:
+                # Wait for it to be created
+                while session_id in self.is_being_created:
+                    pass
+
+            return self.sessions[session_id], False
+
         if req is not None:
             driver = utils.get_webdriver(req)
         else:
@@ -56,6 +71,8 @@ class SessionsStorage:
 
         self.sessions[session_id] = session
         self.drivers[session_id] = driver
+
+        self.is_being_created.remove(session_id)
 
         return session, True
 
@@ -79,6 +96,9 @@ class SessionsStorage:
             driver.quit()
             del driver
 
+        if session_id in self.real_sessions:
+            self.real_sessions.remove(session_id)
+
         return True
 
     def get(self, session_id: str, ttl: Optional[timedelta] = None, req: V1RequestBase = None) -> Tuple[Session, bool]:
@@ -86,7 +106,7 @@ class SessionsStorage:
 
         if ttl is not None and not fresh and session.lifetime() > ttl:
             # logging.debug(session\'s lifetime has expired, so the session is recreated (session_id={session_id})')
-            print(f'session\'s lifetime has expired, so the session is recreated (session_id={session_id})')
+            logging.info(f'Session\'s lifetime has expired, so the session is being recreated (session_id={session_id})')
             session, fresh = self.create(req=req, session_id=session_id, force_new=True)
 
         return session, fresh

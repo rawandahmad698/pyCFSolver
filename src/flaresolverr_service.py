@@ -101,8 +101,11 @@ def controller_v1_endpoint(req: V1RequestBase) -> V1ResponseBase:
         res = V1ResponseBase({})
         res.__error_500__ = True
         res.status = STATUS_ERROR
-        res.message = "Error: " + str(e)
+        res.message = "X=Error: " + str(e)
         logging.error(res.message)
+        # Get the traceback and log it
+        tb = traceback.format_exc()
+        print(tb)
 
     res.startTimestamp = start_ts
     res.endTimestamp = int(time.time() * 1000)
@@ -156,7 +159,14 @@ def _cmd_request_get(req: V1RequestBase) -> V1ResponseBase:
 
     if req.headless:
         logging.info("Headless mode is enabled.")
+
     challenge_res = _resolve_challenge(req, 'GET')
+    if challenge_res is None:
+        res = V1ResponseBase({})
+        res.status = STATUS_ERROR
+        res.message = "An error occurred while resolving the challenge."
+        return res
+
     res = V1ResponseBase({})
     res.status = challenge_res.status
     res.message = challenge_res.message
@@ -241,16 +251,22 @@ def _resolve_challenge(req: V1RequestBase, method: str) -> ChallengeResolutionT:
             session_id = req.session
             ttl = timedelta(minutes=req.session_ttl_minutes) if req.session_ttl_minutes else None
             logging.debug(f"Trying to get session (session_id={session_id}, ttl={str(ttl)})")
-            session, fresh = SESSIONS_STORAGE.get(session_id, ttl, req=req)
+            isb = session_id in SESSIONS_STORAGE.is_being_created
+            if isb:
+                # If you want to not wait for the session to be created, uncomment the following lines
+                # logging.error(f"Session is being created (session_id={session_id})")
+                # res = ChallengeResolutionT({})
+                # res.status = STATUS_ERROR
+                # res.message = "Session is being created...."
+                # return res
+                logging.info(f"Waiting for session to be created (session_id={session_id})")
 
+            session, fresh = SESSIONS_STORAGE.get(session_id, ttl, req=req)
             if fresh:
-                logging.debug(f"new session created to perform the request (session_id={session_id})")
-                print(f"new session created to perform the request (session_id={session_id})")
+                logging.info(f"new session created to perform the request (session_id={session_id})")
             else:
-                logging.debug(f"existing session is used to perform the request (session_id={session_id}, "
+                logging.info(f"existing session is used to perform the request (session_id={session_id}, "
                               f"lifetime={str(session.lifetime())}, ttl={str(ttl)})")
-                print(f"existing session is used to perform the request (session_id={session_id}, "
-                      f"lifetime={str(session.lifetime())}, ttl={str(ttl)})")
 
             driver = session.driver
         else:
@@ -264,10 +280,9 @@ def _resolve_challenge(req: V1RequestBase, method: str) -> ChallengeResolutionT:
         tb = traceback.format_exc()
         line_number = tb.split('File')[1].split(',')[1].split(')')[0]
         print(f'Error on line {line_number} in file {__file__}')
-
         # raise Exception('Error solving the challenge. ' + str(e))
         print('Error solving the challenge. ' + str(e))
-
+        print(f'Traceback: {tb}')
     finally:
         if not req.session:
             if driver:
