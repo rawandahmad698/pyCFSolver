@@ -61,7 +61,7 @@ def controller_v1():
     if envi == "dev":
         try:
             req_url = req.url
-            if req_url not in being_processed and len(being_processed) < int(os.environ.get('MAX_CONCURRENT_REQUESTS', 15)):
+            if req_url not in being_processed:
                 being_processed.append(req_url)
             else:
                 res = V1ResponseBase({})
