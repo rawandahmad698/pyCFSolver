@@ -65,9 +65,8 @@ def controller_v1():
                 being_processed.append(req_url)
             else:
                 res = V1ResponseBase({})
-                res.message = "Already being processed"
-                res.status_code = 500
                 res.__error_500__ = True
+                res.__error_message__ = "Already being processed"
                 return utils.object_to_dict(res)
         except Exception as e:
             _ = e
@@ -76,14 +75,6 @@ def controller_v1():
     res = flaresolverr_service.controller_v1_endpoint(req)
     if res.__error_500__:
         response.status = 500
-
-    if envi == "dev":
-        try:
-            req_url = req.url
-            being_processed.remove(req_url)
-        except Exception as e:
-            _ = e
-            pass
 
     return utils.object_to_dict(res)
 
