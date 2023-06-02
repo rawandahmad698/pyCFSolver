@@ -1,3 +1,4 @@
+import datetime
 import logging
 import platform
 import sys
@@ -256,6 +257,9 @@ def _resolve_challenge(req: V1RequestBase, method: str) -> ChallengeResolutionT:
         if req.session:
             session_id = req.session
             ttl = timedelta(minutes=req.session_ttl_minutes) if req.session_ttl_minutes else None
+            if envi == "dev":
+                ttl = datetime.timedelta(minutes=1)
+
             logging.debug(f"Trying to get session (session_id={session_id}, ttl={str(ttl)})")
             isb = session_id in SESSIONS_STORAGE.is_being_created
             if isb:
@@ -290,12 +294,17 @@ def _resolve_challenge(req: V1RequestBase, method: str) -> ChallengeResolutionT:
         print('Error solving the challenge. ' + str(e))
         print(f'Traceback: {tb}')
     finally:
+
         if not req.session:
             if driver:
                 driver.quit()
             else:
-                logging.debug('No instance of webdriver has been created to perform the request')
-            logging.debug('A used instance of webdriver has been destroyed')
+                logging.info('No instance of webdriver has been created to perform the request')
+            logging.info('A used instance of webdriver has been destroyed')
+        else:
+            if envi == "dev":
+                driver.quit()
+                logging.info('A used instance of webdriver has been destroyed')
 
 
 def click_verify(driver: WebDriver):
