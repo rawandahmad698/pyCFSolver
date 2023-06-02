@@ -2,13 +2,12 @@ import json
 import logging
 import os
 import sys
-import uuid
 
 from bottle import run, response, Bottle, request
 
 from bottle_plugins.error_plugin import error_plugin
 from bottle_plugins.logger_plugin import logger_plugin
-from dtos import IndexResponse, V1RequestBase, V1ResponseBase
+from dtos import IndexResponse, V1RequestBase
 import flaresolverr_service
 import utils
 
@@ -49,8 +48,6 @@ def health():
     res = flaresolverr_service.health_endpoint()
     return utils.object_to_dict(res)
 
-being_processed = []
-
 
 @app.post('/v1')
 def controller_v1():
@@ -58,24 +55,9 @@ def controller_v1():
     Controller v1
     """
     req = V1RequestBase(request.json)
-    if envi == "dev":
-        try:
-            req_url = req.url
-            if req_url not in being_processed:
-                being_processed.append(req_url)
-            else:
-                res = V1ResponseBase({})
-                res.__error_500__ = True
-                res.__error_message__ = "Already being processed"
-                return utils.object_to_dict(res)
-        except Exception as e:
-            _ = e
-            pass
-
     res = flaresolverr_service.controller_v1_endpoint(req)
     if res.__error_500__:
         response.status = 500
-
     return utils.object_to_dict(res)
 
 
