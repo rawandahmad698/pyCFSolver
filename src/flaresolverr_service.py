@@ -21,6 +21,8 @@ from dtos import (STATUS_ERROR, STATUS_OK, ChallengeResolutionResultT,
                   ChallengeResolutionT, HealthResponse, IndexResponse,
                   V1RequestBase, V1ResponseBase)
 
+from flaresolverr import envi
+
 from sessions import SessionsStorage
 
 ACCESS_DENIED_TITLES = [
@@ -95,6 +97,10 @@ def controller_v1_endpoint(req: V1RequestBase) -> V1ResponseBase:
     start_ts = int(time.time() * 1000)
     logging.info(f"Incoming request => POST /v1 body: {utils.object_to_dict(req)}")
     res: V1ResponseBase
+
+    if envi == "dev":
+        req.headless = True
+
     try:
         res = _controller_v1_handler(req)
     except Exception as e:
@@ -352,8 +358,15 @@ def _evil_logic(req: V1RequestBase, driver: WebDriver, method: str) -> Challenge
     # find access denied titles
     for title in ACCESS_DENIED_TITLES:
         if title == page_title:
-            raise Exception('Cloudflare has blocked this request. '
-                            'Probably your IP is banned for this site, check in your web browser.')
+            logging.info("Access denied detected. Refreshing page...")
+            # refresh page
+            driver.refresh()
+            time.sleep(3)
+            page_title = driver.title
+            if title == page_title:
+                raise Exception('Cloudflare has blocked this request. '
+                                'Probably your IP is banned for this site, check in your web browser.')
+
     # find access denied selectors
     for selector in ACCESS_DENIED_SELECTORS:
         found_elements = driver.find_elements(By.CSS_SELECTOR, selector)

@@ -59,7 +59,10 @@ class SessionsStorage:
                 while session_id in self.is_being_created:
                     pass
 
-            return self.sessions[session_id], False
+            if session_id in self.sessions:
+                return self.sessions[session_id], False
+            else:
+                self.is_being_created.append(session_id)
 
         if req is not None:
             driver = utils.get_webdriver(req)

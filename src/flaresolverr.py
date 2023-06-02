@@ -11,6 +11,8 @@ from dtos import IndexResponse, V1RequestBase
 import flaresolverr_service
 import utils
 
+envi = "dev"
+
 
 class JSONErrorBottle(Bottle):
     """
@@ -65,7 +67,8 @@ if __name__ == "__main__":
     log_html = utils.get_config_log_html()
     headless = utils.get_config_headless()
     server_host = os.environ.get('HOST', '0.0.0.0')
-    server_port = int(os.environ.get('PORT', 8192))
+    port = int(os.environ.get('PORT', 8191)) if envi == "dev" else 8192
+    server_port = port
 
     # configure logger
     logger_format = '%(asctime)s %(levelname)-8s %(message)s'
