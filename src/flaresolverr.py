@@ -11,7 +11,7 @@ from dtos import IndexResponse, V1RequestBase
 import flaresolverr_service
 import utils
 
-envi = "dev"
+envi = "prod"
 
 
 class JSONErrorBottle(Bottle):
