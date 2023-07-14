@@ -55,6 +55,10 @@ def get_webdriver(req: V1RequestBase = None) -> WebDriver:
         # this option removes the zygote sandbox (it seems that the resolution is a bit faster)
         options.add_argument('--no-zygote')
 
+        # Test
+        if req.beta_args is not None and req.beta_args is True:
+            options.add_argument('--auto-open-devtools-for-tabs')
+
         # Proxy Support
         if req is not None and req.proxy is not None:
             proxy = req.proxy['url']

@@ -75,6 +75,8 @@ def test_browser_installation():
 
     logging.info("Launching web browser...")
     user_agent = utils.get_user_agent()
+    ua = "APIs-Google (+https://developers.google.com/webmasters/APIs-Google.html)"
+    user_agent = ua
     logging.info("FlareSolverr User-Agent: " + user_agent)
     logging.info("Test successful!")
 
@@ -350,6 +352,12 @@ def _evil_logic(req: V1RequestBase, driver: WebDriver, method: str) -> Challenge
         driver.get(req.url)
     if utils.get_config_log_html():
         logging.debug(f"Response HTML:\n{driver.page_source}")
+
+    if req.delay:
+        if isinstance(req.delay, int):
+            time.sleep(req.delay)
+        else:
+            time.sleep(int(req.delay))
 
     # wait for the page
     html_element = driver.find_element(By.TAG_NAME, "html")
