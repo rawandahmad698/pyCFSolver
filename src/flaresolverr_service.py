@@ -75,8 +75,6 @@ def test_browser_installation():
 
     logging.info("Launching web browser...")
     user_agent = utils.get_user_agent()
-    ua = "APIs-Google (+https://developers.google.com/webmasters/APIs-Google.html)"
-    user_agent = ua
     logging.info("FlareSolverr User-Agent: " + user_agent)
     logging.info("Test successful!")
 
