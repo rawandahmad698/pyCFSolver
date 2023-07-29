@@ -1,7 +1,8 @@
 project:PyCFSolver
-version:1.0.6
+version:1.0.7
 overwrite:src/flaresolverr.py
 overwrite:src/flaresolverr_service.py
 overwrite:src/sessions.py
 overwrite:src/utils.py
 overwrite:src/dtos.py
+overwrite:src/undetected_chromedriver/patcher.py
