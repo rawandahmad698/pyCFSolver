@@ -36,7 +36,7 @@ def get_flaresolverr_version() -> str:
         return FLARESOLVERR_VERSION
 
 
-def get_webdriver(req: V1RequestBase = None) -> WebDriver:
+def get_webdriver(req: V1RequestBase = None, retry: int = 0) -> WebDriver:
     global PATCHED_DRIVER_PATH
     logging.debug('Launching web browser...')
 
@@ -118,6 +118,13 @@ def get_webdriver(req: V1RequestBase = None) -> WebDriver:
 
         return driver
     except Exception as e:
+
+        # Retry up to 3 times
+        if retry < 3:
+            logging.exception(e)
+            logging.debug('Retrying...')
+            return get_webdriver(req, retry + 1)
+
         logging.exception(e)
         tb = e.__traceback__
         lineno = tb.tb_lineno
