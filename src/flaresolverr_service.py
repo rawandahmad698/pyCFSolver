@@ -305,7 +305,7 @@ def click_verify(driver: WebDriver):
         driver.switch_to.frame(iframe)
         checkbox = driver.find_element(
             by=By.XPATH,
-            value='//*[@id="cf-stage"]//label[@class="ctp-checkbox-label"]/input',
+            value='//*[@id="challenge-stage"]/div/label/input',
         )
         if checkbox:
             actions = ActionChains(driver)
@@ -313,7 +313,8 @@ def click_verify(driver: WebDriver):
             actions.click(checkbox)
             actions.perform()
             logging.debug("Cloudflare verify checkbox found and clicked")
-    except Exception:
+    except Exception as e:
+        logging.exception(e)
         logging.debug("Cloudflare verify checkbox not found on the page")
     finally:
         driver.switch_to.default_content()
@@ -383,10 +384,15 @@ def _evil_logic(req: V1RequestBase, driver: WebDriver, method: str) -> Challenge
     # find challenge by title
     challenge_found = False
     for title in CHALLENGE_TITLES:
+        if len(page_title) == 0:
+            challenge_found = True
+            logging.info("Challenge detected. Title is empty")
+            break
         if title.lower() == page_title.lower():
             challenge_found = True
             logging.info("Challenge detected. Title found: " + page_title)
             break
+
     if not challenge_found:
         # find challenge by selectors
         for selector in CHALLENGE_SELECTORS:

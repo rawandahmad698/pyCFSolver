@@ -3,17 +3,21 @@
 
 from distutils.version import LooseVersion
 import io
+import json
 import logging
 import os
+import pathlib
+import platform
 import random
 import re
+import shutil
 import string
 import sys
 import time
 from urllib.request import urlopen
 from urllib.request import urlretrieve
 import zipfile
-
+from multiprocessing import Lock
 
 logger = logging.getLogger(__name__)
 
@@ -21,21 +25,10 @@ IS_POSIX = sys.platform.startswith(("darwin", "cygwin", "linux", "linux2"))
 
 
 class Patcher(object):
-    url_repo = "https://chromedriver.storage.googleapis.com"
-    zip_name = "chromedriver_%s.zip"
+    lock = Lock()
     exe_name = "chromedriver%s"
 
     platform = sys.platform
-    if platform.endswith("win32"):
-        zip_name %= "win32"
-        exe_name %= ".exe"
-    if platform.endswith(("linux", "linux2")):
-        zip_name %= "linux64"
-        exe_name %= ""
-    if platform.endswith("darwin"):
-        zip_name %= "mac64"
-        exe_name %= ""
-
     if platform.endswith("win32"):
         d = "~/appdata/roaming/undetected_chromedriver"
     elif "LAMBDA_TASK_ROOT" in os.environ:
@@ -48,7 +41,13 @@ class Patcher(object):
         d = "~/.undetected_chromedriver"
     data_path = os.path.abspath(os.path.expanduser(d))
 
-    def __init__(self, executable_path=None, force=False, version_main: int = 0):
+    def __init__(
+        self,
+        executable_path=None,
+        force=False,
+        version_main: int = 0,
+        user_multi_procs=False,
+    ):
         """
         Args:
             executable_path: None = automatic
@@ -56,11 +55,21 @@ class Patcher(object):
             force: False
                     terminate processes which are holding lock
             version_main: 0 = auto
-                specify main Chrome version (rounded, ex: 82)
+                specify main chrome version (rounded, ex: 82)
         """
         self.force = force
         self._custom_exe_path = False
         prefix = "undetected"
+        self.user_multi_procs = user_multi_procs
+
+        try:
+            version_main = int(version_main)
+        except (ValueError, TypeError):
+            raise ValueError("version_main must be an integer")
+
+        self.is_old_chromedriver = version_main and version_main <= 114
+        # Needs to be called before self.exe_name is accessed
+        self._set_platform_name()
 
         if not os.path.exists(self.data_path):
             os.makedirs(self.data_path, exist_ok=True)
@@ -78,17 +87,64 @@ class Patcher(object):
         self.zip_path = os.path.join(self.data_path, prefix)
 
         if not executable_path:
-            self.executable_path = os.path.abspath(
-                os.path.join(".", self.executable_path)
-            )
+            if not self.user_multi_procs:
+                self.executable_path = os.path.abspath(
+                    os.path.join(".", self.executable_path)
+                )
 
         if executable_path:
             self._custom_exe_path = True
             self.executable_path = executable_path
+
+        # Set the correct repository to download the Chromedriver from
+        if self.is_old_chromedriver:
+            self.url_repo = "https://chromedriver.storage.googleapis.com"
+        else:
+            self.url_repo = "https://googlechromelabs.github.io/chrome-for-testing"
+
         self.version_main = version_main
         self.version_full = None
 
-    def auto(self, executable_path=None, force=False, version_main=None):
+    def _set_platform_name(self):
+        """
+        Set the platform and exe name based on the platform undetected_chromedriver is running on
+        in order to download the correct chromedriver.
+        """
+        if self.platform.endswith("win32"):
+            self.platform_name = "win32"
+            self.exe_name %= ".exe"
+        if self.platform.endswith(("linux", "linux2")):
+            self.platform_name = "linux64"
+            self.exe_name %= ""
+        if self.platform.endswith("darwin"):
+            if self.is_old_chromedriver:
+                self.platform_name = "mac64"
+            else:
+                self.platform_name = "mac-x64"
+            self.exe_name %= ""
+
+    def auto(self, executable_path=None, force=False, version_main=None, _=None):
+        """
+
+        Args:
+            executable_path:
+            force:
+            version_main:
+
+        Returns:
+
+        """
+        p = pathlib.Path(self.data_path)
+        if self.user_multi_procs:
+            with Lock():
+                files = list(p.rglob("*chromedriver*"))
+                most_recent = max(files, key=lambda f: f.stat().st_mtime)
+                files.remove(most_recent)
+                list(map(lambda f: f.unlink(), files))
+                if self.is_binary_patched(most_recent):
+                    self.executable_path = str(most_recent)
+                    return True
+
         if executable_path:
             self.executable_path = executable_path
             self._custom_exe_path = True
@@ -127,6 +183,53 @@ class Patcher(object):
         self.unzip_package(self.fetch_package())
         return self.patch()
 
+    def driver_binary_in_use(self, path: str = None) -> bool:
+        """
+        naive test to check if a found chromedriver binary is
+        currently in use
+
+        Args:
+            path: a string or PathLike object to the binary to check.
+                  if not specified, we check use this object's executable_path
+        """
+        if not path:
+            path = self.executable_path
+        p = pathlib.Path(path)
+
+        if not p.exists():
+            raise OSError("file does not exist: %s" % p)
+        try:
+            with open(p, mode="a+b") as fs:
+                exc = []
+                try:
+
+                    fs.seek(0, 0)
+                except PermissionError as e:
+                    exc.append(e)  # since some systems apprently allow seeking
+                    # we conduct another test
+                try:
+                    fs.readline()
+                except PermissionError as e:
+                    exc.append(e)
+
+                if exc:
+
+                    return True
+                return False
+            # ok safe to assume this is in use
+        except Exception as e:
+            # logger.exception("whoops ", e)
+            pass
+
+    def cleanup_unused_files(self):
+        p = pathlib.Path(self.data_path)
+        items = list(p.glob("*undetected*"))
+        for item in items:
+            try:
+                item.unlink()
+            except:
+                pass
+
     def patch(self):
         self.patch_exe()
         return self.is_binary_patched()
@@ -137,13 +240,32 @@ class Patcher(object):
         :return: version string
         :rtype: LooseVersion
         """
-        path = "/latest_release"
-        if self.version_main and self.version_main != "115":
-            path += f"_{self.version_main}"
+        # Endpoint for old versions of Chromedriver (114 and below)
+        if self.is_old_chromedriver:
+            path = f"/latest_release_{self.version_main}"
+            path = path.upper()
+            logger.debug("getting release number from %s" % path)
+            return LooseVersion(urlopen(self.url_repo + path).read().decode())
 
-        path = path.upper()
+        # Endpoint for new versions of Chromedriver (115+)
+        if not self.version_main:
+            # Fetch the latest version
+            path = "/last-known-good-versions-with-downloads.json"
+            logger.debug("getting release number from %s" % path)
+            with urlopen(self.url_repo + path) as conn:
+                response = conn.read().decode()
+
+            last_versions = json.loads(response)
+            return LooseVersion(last_versions["channels"]["Stable"]["version"])
+
+        # Fetch the latest minor version of the major version provided
+        path = "/latest-versions-per-milestone-with-downloads.json"
         logger.debug("getting release number from %s" % path)
-        return LooseVersion(urlopen(self.url_repo + path).read().decode())
+        with urlopen(self.url_repo + path) as conn:
+            response = conn.read().decode()
+
+        major_versions = json.loads(response)
+        return LooseVersion(major_versions["milestones"][str(self.version_main)]["version"])
 
     def parse_exe_version(self):
         with io.open(self.executable_path, "rb") as f:
@@ -158,10 +280,16 @@ class Patcher(object):
 
         :return: path to downloaded file
         """
-        u = "%s/%s/%s" % (self.url_repo, self.version_full.vstring, self.zip_name)
-        logger.debug("downloading from %s" % u)
-        # return urlretrieve(u, filename=self.data_path)[0]
-        return urlretrieve(u)[0]
+        zip_name = f"chromedriver_{self.platform_name}.zip"
+        if self.is_old_chromedriver:
+            download_url = "%s/%s/%s" % (self.url_repo, self.version_full.vstring, zip_name)
+        else:
+            zip_name = zip_name.replace("_", "-", 1)
+            download_url = "https://edgedl.me.gvt1.com/edgedl/chrome/chrome-for-testing/%s/%s/%s"
+            download_url %= (self.version_full.vstring, self.platform_name, zip_name)
+
+        logger.debug("downloading from %s" % download_url)
+        return urlretrieve(download_url)[0]
 
     def unzip_package(self, fp):
         """
@@ -169,6 +297,12 @@ class Patcher(object):
 
         :return: path to unpacked executable
         """
+        exe_path = self.exe_name
+        if not self.is_old_chromedriver:
+            # The new chromedriver unzips into its own folder
+            zip_name = f"chromedriver-{self.platform_name}"
+            exe_path = os.path.join(zip_name, self.exe_name)
+
         logger.debug("unzipping %s" % fp)
         try:
             os.unlink(self.zip_path)
@@ -177,10 +311,10 @@ class Patcher(object):
 
         os.makedirs(self.zip_path, mode=0o755, exist_ok=True)
         with zipfile.ZipFile(fp, mode="r") as zf:
-            zf.extract(self.exe_name, self.zip_path)
-        os.rename(os.path.join(self.zip_path, self.exe_name), self.executable_path)
+            zf.extractall(self.zip_path)
+        os.rename(os.path.join(self.zip_path, exe_path), self.executable_path)
         os.remove(fp)
-        os.rmdir(self.zip_path)
+        shutil.rmtree(self.zip_path)
         os.chmod(self.executable_path, 0o755)
         return self.executable_path
 
@@ -256,21 +390,17 @@ class Patcher(object):
         else:
             timeout = 3  # stop trying after this many seconds
             t = time.monotonic()
-            while True:
-                now = time.monotonic()
-                if now - t > timeout:
-                    # we don't want to wait until the end of time
-                    logger.debug(
-                        "could not unlink %s in time (%d seconds)"
-                        % (self.executable_path, timeout)
-                    )
-                    break
+            now = lambda: time.monotonic()
+            while now() - t > timeout:
+                # we don't want to wait until the end of time
                 try:
+                    if self.user_multi_procs:
+                        break
                     os.unlink(self.executable_path)
                     logger.debug("successfully unlinked %s" % self.executable_path)
                     break
                 except (OSError, RuntimeError, PermissionError):
-                    time.sleep(0.1)
+                    time.sleep(0.01)
                     continue
                 except FileNotFoundError:
                     break

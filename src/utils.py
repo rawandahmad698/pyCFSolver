@@ -96,7 +96,7 @@ def get_webdriver(req: V1RequestBase = None, retry: int = 0) -> WebDriver:
         # downloads and patches the chromedriver
         # if we don't set driver_executable_path it downloads, patches, and deletes the driver each time
         driver = uc.Chrome(options=options, driver_executable_path=driver_exe_path, version_main=version_main,
-                           windows_headless=windows_headless)
+                           windows_headless=windows_headless, start_error_message="")
 
         # Temporary fix for headless mode
         if windows_headless:
